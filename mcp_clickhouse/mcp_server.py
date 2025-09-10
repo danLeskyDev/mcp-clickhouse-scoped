@@ -19,6 +19,8 @@ from starlette.responses import PlainTextResponse
 
 from mcp_clickhouse.mcp_env import get_config, get_chdb_config
 from mcp_clickhouse.chdb_prompt import CHDB_PROMPT
+from mcp_clickhouse.response_filter import ResponseFilter
+from config import ALLOWED_TABLES_BY_DB
 
 
 @dataclass
@@ -66,6 +68,9 @@ atexit.register(lambda: QUERY_EXECUTOR.shutdown(wait=True))
 SELECT_QUERY_TIMEOUT_SECS = 30
 
 load_dotenv()
+
+# Create response filter instance
+response_filter = ResponseFilter(ALLOWED_TABLES_BY_DB)
 
 mcp = FastMCP(
     name=MCP_SERVER_NAME,
@@ -181,7 +186,11 @@ def execute_query(query: str):
     try:
         read_only = get_readonly_setting(client)
         res = client.query(query, settings={"readonly": read_only})
-        logger.info(f"Query returned {len(res.result_rows)} rows")
+        
+        # Apply response filtering based on fingerprint
+        response_filter.filter_result(res)
+        
+        logger.info(f"Query returned {len(res.result_rows)} rows (after filtering)")
         return {"columns": res.column_names, "rows": res.result_rows}
     except Exception as err:
         logger.error(f"Error executing query: {err}")
