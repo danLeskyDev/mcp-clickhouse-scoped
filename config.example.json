@@ -1,0 +1,18 @@
+{
+  "clickhouse": {
+    "host": "localhost",
+    "port": 9000,
+    "username": "default",
+    "password": "your_password_here",
+    "database": "default",
+    "secure": false,
+    "verify": false
+  },
+  "scopes": {
+    "enabled": true,
+    "allowed_databases": {
+      "default": ["users", "orders"],
+      "analytics": ["events", "metrics"]
+    }
+  }
+}

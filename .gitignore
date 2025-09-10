@@ -1,5 +1,7 @@
 .envrc
 .ruff_cache/
+config.json
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

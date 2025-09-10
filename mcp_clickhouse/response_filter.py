@@ -73,16 +73,19 @@ class ResponseFilter:
         rows = result.result_rows
         
         if fingerprint == 'single_column_listing':
-            # SHOW TABLES or SHOW DATABASES - figure out which by checking first value
-            if rows and rows[0][0] in self.allowed_tables_by_db:
-                # It's databases
-                return [r for r in rows if r[0] in self.allowed_tables_by_db]
-            else:
-                # It's tables - check if table exists in any allowed database
-                return [
-                    r for r in rows 
-                    if any(r[0] in tables for tables in self.allowed_tables_by_db.values())
-                ]
+            # For single column, we can't reliably distinguish between SHOW TABLES and SHOW DATABASES
+            # Solution: Filter conservatively - keep items that are EITHER valid databases OR valid tables
+            # This may let some extra items through, but won't incorrectly hide valid data
+            
+            valid_databases = self.allowed_tables_by_db.keys()
+            valid_tables = set()
+            for tables in self.allowed_tables_by_db.values():
+                valid_tables.update(tables)
+            
+            return [
+                r for r in rows 
+                if r[0] in valid_databases or r[0] in valid_tables
+            ]
         
         elif fingerprint == 'database_and_name':
             # system.tables query (has database and name columns)
