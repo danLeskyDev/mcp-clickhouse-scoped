@@ -29,7 +29,15 @@ class ResponseFilter:
         
         if fingerprint:
             logger.debug(f"Detected response type: {fingerprint}")
+            
+            # Log before state
+            logger.info(f"BEFORE: {len(result.result_rows)} rows")
+            
             filtered_rows = self._apply_filter(result, fingerprint)
+            
+            # Log after state
+            logger.info(f"AFTER: {len(filtered_rows)} rows")
+            
             result.result_rows = filtered_rows
     
     def _identify_response_type(self, result) -> Optional[str]:
