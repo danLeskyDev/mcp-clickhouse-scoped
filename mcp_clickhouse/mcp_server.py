@@ -20,7 +20,7 @@ from starlette.responses import PlainTextResponse
 from mcp_clickhouse.mcp_env import get_config, get_chdb_config
 from mcp_clickhouse.chdb_prompt import CHDB_PROMPT
 from mcp_clickhouse.response_filter import ResponseFilter
-from config import ALLOWED_TABLES_BY_DB
+from mcp_clickhouse.config import ALLOWED_TABLES_BY_DB
 
 
 @dataclass
