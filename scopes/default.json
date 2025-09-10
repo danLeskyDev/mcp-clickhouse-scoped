@@ -1,6 +1,0 @@
-{
-    "allowed_databases": {
-      "default": ["users", "orders"],
-      "analytics": ["logs"]
-    }
-  }

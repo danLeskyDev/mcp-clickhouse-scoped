@@ -5,8 +5,8 @@ from typing import Dict, Set, Optional
 
 logger = logging.getLogger(__name__)
 
-# Hardcoded path to the scopes JSON file
-CONFIG_FILE_PATH = Path('scopes/default.json')
+# Path to the scopes JSON file
+CONFIG_FILE_PATH = Path('config/scopes.json')
 
 # Load scopes from JSON
 def load_scopes_from_json(file_path: Path = CONFIG_FILE_PATH) -> Optional[Dict[str, any]]:

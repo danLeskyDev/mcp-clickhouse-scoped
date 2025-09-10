@@ -1,6 +1,7 @@
 .envrc
 .ruff_cache/
-config.json
+config/credentials.json
+config/scopes.json
 .env
 
 # Byte-compiled / optimized / DLL files

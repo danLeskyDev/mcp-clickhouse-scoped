@@ -1,0 +1,6 @@
+{
+  "allowed_databases": {
+    "example_db": ["table1", "table2"],
+    "another_db": ["table3", "table4"]
+  }
+}
