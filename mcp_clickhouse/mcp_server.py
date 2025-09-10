@@ -136,6 +136,12 @@ def to_json(obj: Any) -> str:
 def list_databases():
     """List available ClickHouse databases"""
     logger.info("Listing all databases")
+    
+    # If no scopes configured, return empty list (deny by default)
+    if not ALLOWED_TABLES_BY_DB:
+        logger.info("No scopes configured - returning empty database list")
+        return json.dumps([])
+    
     client = create_clickhouse_client()
     result = client.command("SHOW DATABASES")
 
@@ -145,14 +151,29 @@ def list_databases():
     else:
         databases = [result]
 
-    logger.info(f"Found {len(databases)} databases")
-    return json.dumps(databases)
+    # Filter to only allowed databases
+    allowed_databases = list(ALLOWED_TABLES_BY_DB.keys())
+    filtered_databases = [db for db in databases if db in allowed_databases]
+    
+    logger.info(f"Found {len(databases)} databases, returning {len(filtered_databases)} allowed")
+    return json.dumps(filtered_databases)
 
 
 def list_tables(database: str, like: Optional[str] = None, not_like: Optional[str] = None):
     """List available ClickHouse tables in a database, including schema, comment,
     row count, and column count."""
     logger.info(f"Listing tables in database '{database}'")
+    
+    # If no scopes configured, return empty list (deny by default)
+    if not ALLOWED_TABLES_BY_DB:
+        logger.info("No scopes configured - returning empty table list")
+        return []
+    
+    # If database not in allowed list, return empty list
+    if database not in ALLOWED_TABLES_BY_DB:
+        logger.info(f"Database '{database}' not in allowed list - returning empty table list")
+        return []
+    
     client = create_clickhouse_client()
     query = f"SELECT database, name, engine, create_table_query, dependencies_database, dependencies_table, engine_full, sorting_key, primary_key, total_rows, total_bytes, total_bytes_uncompressed, parts, active_parts, total_marks, comment FROM system.tables WHERE database = {format_query_value(database)}"
     if like:
@@ -162,22 +183,29 @@ def list_tables(database: str, like: Optional[str] = None, not_like: Optional[st
         query += f" AND name NOT LIKE {format_query_value(not_like)}"
 
     result = client.query(query)
-
-    # Deserialize result as Table dataclass instances
-    tables = result_to_table(result.column_names, result.result_rows)
+    
+    # Apply filtering to the table list
+    filtered_rows = response_filter.filter_result(result)
+    
+    # Deserialize filtered result as Table dataclass instances
+    tables = result_to_table(result.column_names, filtered_rows)
 
     for table in tables:
         column_data_query = f"SELECT database, table, name, type AS column_type, default_kind, default_expression, comment FROM system.columns WHERE database = {format_query_value(database)} AND table = {format_query_value(table.name)}"
         column_data_query_result = client.query(column_data_query)
+        
+        # Apply filtering to column results too
+        filtered_column_rows = response_filter.filter_result(column_data_query_result)
+        
         table.columns = [
             c
             for c in result_to_column(
                 column_data_query_result.column_names,
-                column_data_query_result.result_rows,
+                filtered_column_rows,
             )
         ]
 
-    logger.info(f"Found {len(tables)} tables")
+    logger.info(f"Found {len(result.result_rows)} tables, returning {len(tables)} allowed")
     return [asdict(table) for table in tables]
 
 
@@ -199,7 +227,8 @@ def execute_query(query: str):
 
 def run_select_query(query: str):
     """Run a SELECT query in a ClickHouse database"""
-    logger.info(f"Executing SELECT query: {query}")
+    logger.info(f"TOOL CALLED: run_select_query")
+    logger.info(f"Query: {query}")
     try:
         future = QUERY_EXECUTOR.submit(execute_query, query)
         try:

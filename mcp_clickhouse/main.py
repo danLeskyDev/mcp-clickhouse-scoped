@@ -1,5 +1,15 @@
-from .mcp_server import mcp
-from .mcp_env import get_config, TransportType
+# Handle both module and direct script execution
+import sys
+import os
+if __name__ == "__main__":
+    # Add parent directory to path for direct script execution
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from mcp_clickhouse.mcp_server import mcp
+    from mcp_clickhouse.mcp_env import get_config, TransportType
+else:
+    # Relative imports for module execution
+    from .mcp_server import mcp
+    from .mcp_env import get_config, TransportType
 
 
 def main():

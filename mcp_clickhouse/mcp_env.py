@@ -62,7 +62,10 @@ class ClickHouseConfig:
     
     def _load_from_json(self):
         """Try to load configuration from config/credentials.json if it exists."""
-        config_path = Path('config/credentials.json')
+        # Get the directory where this Python module is located
+        module_dir = Path(__file__).parent.parent  # Go up from mcp_clickhouse to project root
+        config_path = module_dir / 'config' / 'credentials.json'
+        
         if config_path.exists():
             try:
                 with open(config_path, 'r') as f:
