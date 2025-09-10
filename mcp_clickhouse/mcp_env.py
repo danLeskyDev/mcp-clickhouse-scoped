@@ -6,8 +6,13 @@ and type conversion.
 
 from dataclasses import dataclass
 import os
+import json
+from pathlib import Path
 from typing import Optional
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TransportType(str, Enum):
@@ -50,9 +55,28 @@ class ClickHouseConfig:
     """
 
     def __init__(self):
-        """Initialize the configuration from environment variables."""
+        """Initialize the configuration from environment variables or JSON config."""
+        self._load_from_json()
         if self.enabled:
             self._validate_required_vars()
+    
+    def _load_from_json(self):
+        """Try to load configuration from config/credentials.json if it exists."""
+        config_path = Path('config/credentials.json')
+        if config_path.exists():
+            try:
+                with open(config_path, 'r') as f:
+                    config = json.load(f)
+                    if 'clickhouse' in config:
+                        # Store the loaded config for use in property methods
+                        self._json_config = config['clickhouse']
+                        logger.info("Loaded ClickHouse config from config/credentials.json")
+                        return
+            except Exception as e:
+                logger.warning(f"Failed to load config/credentials.json: {e}, falling back to env vars")
+        
+        # No JSON config, will use env vars
+        self._json_config = None
 
     @property
     def enabled(self) -> bool:
@@ -65,6 +89,8 @@ class ClickHouseConfig:
     @property
     def host(self) -> str:
         """Get the ClickHouse host."""
+        if self._json_config and 'host' in self._json_config:
+            return self._json_config['host']
         return os.environ["CLICKHOUSE_HOST"]
 
     @property
@@ -74,6 +100,8 @@ class ClickHouseConfig:
         Defaults to 8443 if secure=True, 8123 if secure=False.
         Can be overridden by CLICKHOUSE_PORT environment variable.
         """
+        if self._json_config and 'port' in self._json_config:
+            return self._json_config['port']
         if "CLICKHOUSE_PORT" in os.environ:
             return int(os.environ["CLICKHOUSE_PORT"])
         return 8443 if self.secure else 8123
@@ -81,16 +109,22 @@ class ClickHouseConfig:
     @property
     def username(self) -> str:
         """Get the ClickHouse username."""
+        if self._json_config and 'username' in self._json_config:
+            return self._json_config['username']
         return os.environ["CLICKHOUSE_USER"]
 
     @property
     def password(self) -> str:
         """Get the ClickHouse password."""
+        if self._json_config and 'password' in self._json_config:
+            return self._json_config['password']
         return os.environ["CLICKHOUSE_PASSWORD"]
 
     @property
     def database(self) -> Optional[str]:
         """Get the default database name if set."""
+        if self._json_config and 'database' in self._json_config:
+            return self._json_config['database']
         return os.getenv("CLICKHOUSE_DATABASE")
 
     @property
@@ -99,6 +133,8 @@ class ClickHouseConfig:
 
         Default: True
         """
+        if self._json_config and 'secure' in self._json_config:
+            return self._json_config['secure']
         return os.getenv("CLICKHOUSE_SECURE", "true").lower() == "true"
 
     @property
@@ -107,6 +143,8 @@ class ClickHouseConfig:
 
         Default: True
         """
+        if self._json_config and 'verify' in self._json_config:
+            return self._json_config['verify']
         return os.getenv("CLICKHOUSE_VERIFY", "true").lower() == "true"
 
     @property
@@ -190,18 +228,27 @@ class ClickHouseConfig:
         return config
 
     def _validate_required_vars(self) -> None:
-        """Validate that all required environment variables are set.
+        """Validate that all required configuration is present.
 
         Raises:
-            ValueError: If any required environment variable is missing.
+            ValueError: If any required configuration is missing.
         """
-        missing_vars = []
-        for var in ["CLICKHOUSE_HOST", "CLICKHOUSE_USER", "CLICKHOUSE_PASSWORD"]:
-            if var not in os.environ:
-                missing_vars.append(var)
-
-        if missing_vars:
-            raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
+        # If we have JSON config, validate it has required fields
+        if self._json_config:
+            missing_fields = []
+            for field in ["host", "username", "password"]:
+                if field not in self._json_config:
+                    missing_fields.append(field)
+            if missing_fields:
+                raise ValueError(f"Missing required fields in credentials.json: {', '.join(missing_fields)}")
+        else:
+            # Fall back to checking environment variables
+            missing_vars = []
+            for var in ["CLICKHOUSE_HOST", "CLICKHOUSE_USER", "CLICKHOUSE_PASSWORD"]:
+                if var not in os.environ:
+                    missing_vars.append(var)
+            if missing_vars:
+                raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 
 @dataclass

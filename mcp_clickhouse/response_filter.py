@@ -16,14 +16,17 @@ class ResponseFilter:
     def __init__(self, allowed_tables_by_db: Optional[Dict[str, Set[str]]]):
         self.allowed_tables_by_db = allowed_tables_by_db
     
-    def filter_result(self, result) -> None:
-        """Filter QueryResult in-place based on response fingerprint.
+    def filter_result(self, result) -> list:
+        """Filter QueryResult based on response fingerprint.
         
         Args:
             result: clickhouse_connect QueryResult object to filter
+            
+        Returns:
+            Filtered rows list
         """
         if not self.allowed_tables_by_db:
-            return
+            return result.result_rows
         
         fingerprint = self._identify_response_type(result)
         
@@ -38,7 +41,9 @@ class ResponseFilter:
             # Log after state
             logger.info(f"AFTER: {len(filtered_rows)} rows")
             
-            result.result_rows = filtered_rows
+            return filtered_rows
+        
+        return result.result_rows
     
     def _identify_response_type(self, result) -> Optional[str]:
         """Identify the type of response based on column structure.

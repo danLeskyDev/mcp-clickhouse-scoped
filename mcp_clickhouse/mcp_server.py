@@ -188,10 +188,10 @@ def execute_query(query: str):
         res = client.query(query, settings={"readonly": read_only})
         
         # Apply response filtering based on fingerprint
-        response_filter.filter_result(res)
+        filtered_rows = response_filter.filter_result(res)
         
-        logger.info(f"Query returned {len(res.result_rows)} rows (after filtering)")
-        return {"columns": res.column_names, "rows": res.result_rows}
+        logger.info(f"Query returned {len(filtered_rows)} rows (after filtering)")
+        return {"columns": res.column_names, "rows": filtered_rows}
     except Exception as err:
         logger.error(f"Error executing query: {err}")
         raise ToolError(f"Query execution failed: {str(err)}")
