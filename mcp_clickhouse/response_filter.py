@@ -4,8 +4,9 @@ This module implements fingerprint-based filtering of QueryResult objects
 to enforce table/database scoping without SQL parsing.
 """
 
-from typing import Dict, Set, Optional
+from typing import Optional
 import logging
+from . import config
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,9 @@ logger = logging.getLogger(__name__)
 class ResponseFilter:
     """Filters ClickHouse responses based on allowed tables configuration."""
     
-    def __init__(self, allowed_tables_by_db: Optional[Dict[str, Set[str]]]):
-        self.allowed_tables_by_db = allowed_tables_by_db
+    def __init__(self):
+        """Initialize the response filter."""
+        pass
     
     def filter_result(self, result) -> list:
         """Filter QueryResult based on response fingerprint.
@@ -25,7 +27,7 @@ class ResponseFilter:
         Returns:
             Filtered rows list
         """
-        if not self.allowed_tables_by_db:
+        if not config.ALLOWED_TABLES_BY_DB:
             return result.result_rows
         
         fingerprint = self._identify_response_type(result)
@@ -82,9 +84,9 @@ class ResponseFilter:
             # Solution: Filter conservatively - keep items that are EITHER valid databases OR valid tables
             # This may let some extra items through, but won't incorrectly hide valid data
             
-            valid_databases = self.allowed_tables_by_db.keys()
+            valid_databases = config.ALLOWED_TABLES_BY_DB.keys()
             valid_tables = set()
-            for tables in self.allowed_tables_by_db.values():
+            for tables in config.ALLOWED_TABLES_BY_DB.values():
                 valid_tables.update(tables)
             
             return [
@@ -98,8 +100,8 @@ class ResponseFilter:
             name_idx = cols_lower.index('name')
             return [
                 r for r in rows
-                if r[db_idx] in self.allowed_tables_by_db
-                and r[name_idx] in self.allowed_tables_by_db.get(r[db_idx], set())
+                if r[db_idx] in config.ALLOWED_TABLES_BY_DB
+                and r[name_idx] in config.ALLOWED_TABLES_BY_DB.get(r[db_idx], set())
             ]
         
         elif fingerprint == 'database_and_table':
@@ -108,8 +110,8 @@ class ResponseFilter:
             table_idx = cols_lower.index('table')
             return [
                 r for r in rows
-                if r[db_idx] in self.allowed_tables_by_db
-                and r[table_idx] in self.allowed_tables_by_db.get(r[db_idx], set())
+                if r[db_idx] in config.ALLOWED_TABLES_BY_DB
+                and r[table_idx] in config.ALLOWED_TABLES_BY_DB.get(r[db_idx], set())
             ]
         
         # Unknown fingerprint, return original rows

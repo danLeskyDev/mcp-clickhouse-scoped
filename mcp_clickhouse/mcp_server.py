@@ -69,8 +69,8 @@ SELECT_QUERY_TIMEOUT_SECS = 30
 
 load_dotenv()
 
-# Create response filter instance
-response_filter = ResponseFilter(ALLOWED_TABLES_BY_DB)
+# Create response filter instance that dynamically uses current config
+response_filter = ResponseFilter()
 
 mcp = FastMCP(
     name=MCP_SERVER_NAME,
