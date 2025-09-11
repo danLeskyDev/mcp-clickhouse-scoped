@@ -1,6 +1,61 @@
 {
-  "allowed_databases": {
-    "example_db": ["table1", "table2"],
-    "another_db": ["table3", "table4"]
+  "scopes": {
+    "analytics": {
+      "description": "Analytics and reporting tables",
+      "allowed_databases": {
+        "mydb": [
+          "user_analytics",
+          "page_views", 
+          "daily_metrics",
+          "session_stats"
+        ]
+      }
+    },
+    "finance": {
+      "description": "Financial and billing data",
+      "allowed_databases": {
+        "mydb": [
+          "invoices",
+          "payments",
+          "subscriptions",
+          "customers"
+        ]
+      }
+    },
+    "support": {
+      "description": "Customer support data",
+      "allowed_databases": {
+        "mydb": [
+          "tickets",
+          "customer_feedback",
+          "support_agents"
+        ],
+        "logs": [
+          "support_interactions"
+        ]
+      }
+    },
+    "all": {
+      "description": "Full access scope for admin use",
+      "allowed_databases": {
+        "mydb": [
+          "user_analytics",
+          "page_views",
+          "daily_metrics",
+          "session_stats",
+          "invoices",
+          "payments",
+          "subscriptions",
+          "customers",
+          "tickets",
+          "customer_feedback",
+          "support_agents"
+        ],
+        "logs": [
+          "support_interactions",
+          "audit_log"
+        ]
+      }
+    }
   }
 }
