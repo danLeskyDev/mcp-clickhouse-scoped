@@ -40,57 +40,37 @@ def load_and_set_scope(scope_name: Optional[str] = None, scope_file: Optional[Pa
     """
     global ALLOWED_TABLES_BY_DB
     
+    # Load scopes data from appropriate source
     if scope_file:
-        # Load from custom file
         scopes_data = load_scopes_from_json(scope_file)
-        if scopes_data:
-            # Check if it's the old format or new multi-scope format
-            if 'allowed_databases' in scopes_data:
-                # Old single-scope format
-                ALLOWED_TABLES_BY_DB = {
-                    db: set(tables) for db, tables in scopes_data.get('allowed_databases', {}).items()
-                }
-                logger.info(f"Loaded custom scope from {scope_file} with {len(ALLOWED_TABLES_BY_DB)} databases")
-            elif 'scopes' in scopes_data:
-                # New multi-scope format, use first scope
-                first_scope = next(iter(scopes_data['scopes'].values()))
-                ALLOWED_TABLES_BY_DB = {
-                    db: set(tables) for db, tables in first_scope.get('allowed_databases', {}).items()
-                }
-                logger.info(f"Loaded first scope from {scope_file} with {len(ALLOWED_TABLES_BY_DB)} databases")
-    
-    elif scope_name:
-        # Load specific scope from default file
-        scopes_data = load_scopes_from_json()
-        if scopes_data:
-            if 'scopes' in scopes_data and scope_name in scopes_data['scopes']:
-                # New multi-scope format
-                scope = scopes_data['scopes'][scope_name]
-                ALLOWED_TABLES_BY_DB = {
-                    db: set(tables) for db, tables in scope.get('allowed_databases', {}).items()
-                }
-                logger.info(f"Loaded scope '{scope_name}' with {len(ALLOWED_TABLES_BY_DB)} databases")
-            else:
-                logger.error(f"Scope '{scope_name}' not found in scopes.json")
-    
     else:
-        # Default behavior - try to load from default file
         scopes_data = load_scopes_from_json()
-        if scopes_data:
-            if 'allowed_databases' in scopes_data:
-                # Old single-scope format
-                ALLOWED_TABLES_BY_DB = {
-                    db: set(tables) for db, tables in scopes_data.get('allowed_databases', {}).items()
-                }
-                logger.info(f"Loaded default scope with {len(ALLOWED_TABLES_BY_DB)} databases")
-            elif 'scopes' in scopes_data:
-                # New multi-scope format, use first scope as default
-                first_scope_name = next(iter(scopes_data['scopes'].keys()))
-                first_scope = scopes_data['scopes'][first_scope_name]
-                ALLOWED_TABLES_BY_DB = {
-                    db: set(tables) for db, tables in first_scope.get('allowed_databases', {}).items()
-                }
-                logger.info(f"Loaded default scope '{first_scope_name}' with {len(ALLOWED_TABLES_BY_DB)} databases")
+    
+    # Validate scopes data
+    if not scopes_data or 'scopes' not in scopes_data:
+        logger.error("No valid scopes configuration found")
+        ALLOWED_TABLES_BY_DB = None
+        return
+    
+    # Select the appropriate scope
+    if scope_name:
+        if scope_name in scopes_data['scopes']:
+            scope = scopes_data['scopes'][scope_name]
+            logger.info(f"Loaded scope '{scope_name}' with {len(scope.get('allowed_databases', {}))} databases")
+        else:
+            logger.error(f"Scope '{scope_name}' not found in scopes configuration")
+            ALLOWED_TABLES_BY_DB = None
+            return
+    else:
+        # Use first scope as default
+        first_scope_name = next(iter(scopes_data['scopes'].keys()))
+        scope = scopes_data['scopes'][first_scope_name]
+        logger.info(f"Loaded default scope '{first_scope_name}' with {len(scope.get('allowed_databases', {}))} databases")
+    
+    # Set the allowed tables from the selected scope
+    ALLOWED_TABLES_BY_DB = {
+        db: set(tables) for db, tables in scope.get('allowed_databases', {}).items()
+    }
 
 # Initialize with default behavior on module import
 load_and_set_scope()
