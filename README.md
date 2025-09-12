@@ -4,6 +4,8 @@
 
 An MCP server for ClickHouse.
 
+This is a fork of the original [mcp-clickhouse](https://github.com/bracesproul/mcp-clickhouse) that adds scope-based table filtering. It allows you to run multiple MCP server instances, each with access to only specific tables, reducing LLM context usage and improving conversation focus.
+
 <a href="https://glama.ai/mcp/servers/yvjy4csvo1"><img width="380" height="200" src="https://glama.ai/mcp/servers/yvjy4csvo1/badge" alt="mcp-clickhouse MCP server" /></a>
 
 ## Features
@@ -41,9 +43,130 @@ curl http://localhost:8000/health
 # Response: OK - Connected to ClickHouse 24.3.1
 ```
 
+## Scope Configuration
+
+You can limit which tables each MCP server instance can access by defining scopes.
+
+**⚠️ Important Security Note**: This is a soft safeguard for context reduction, not a security feature. If the LLM knows a table name, it can still query it directly via SQL. This filtering is designed to:
+- Reduce LLM context usage by hiding irrelevant tables
+- Help focus conversations on specific domains
+- Provide a convenient testing mechanism
+
+For actual security, implement proper database-level access controls and use restricted database users.
+
+### 1. Create `config/scopes.json`:
+
+```json
+{
+  "scopes": {
+    "analytics": {
+      "description": "Analytics and reporting tables",
+      "allowed_databases": {
+        "default": [
+          "page_views",
+          "user_sessions",
+          "metrics"
+        ]
+      }
+    },
+    "finance": {
+      "description": "Financial data",
+      "allowed_databases": {
+        "default": [
+          "invoices",
+          "payments",
+          "subscriptions"
+        ]
+      }
+    },
+    "support": {
+      "description": "Customer support data",
+      "allowed_databases": {
+        "default": [
+          "tickets",
+          "feedback"
+        ]
+      }
+    }
+  }
+}
+```
+
+### 2. Configure multiple instances in Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "clickhouse-analytics": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_clickhouse.main",
+        "--scope",
+        "analytics"
+      ],
+      "env": {
+        "CLICKHOUSE_HOST": "<your-host>",
+        "CLICKHOUSE_USER": "<your-user>",
+        "CLICKHOUSE_PASSWORD": "<your-password>"
+      }
+    },
+    "clickhouse-finance": {
+      "command": "python",
+      "args": [
+        "-m",
+        "mcp_clickhouse.main",
+        "--scope",
+        "finance"
+      ],
+      "env": {
+        "CLICKHOUSE_HOST": "<your-host>",
+        "CLICKHOUSE_USER": "<your-user>",
+        "CLICKHOUSE_PASSWORD": "<your-password>"
+      }
+    }
+  }
+}
+```
+
+Each instance will only see and query its allowed tables.
+
 ## Configuration
 
 This MCP server supports both ClickHouse and chDB. You can enable either or both depending on your needs.
+
+### Using JSON Configuration (Recommended)
+
+Create `config/credentials.json`:
+
+```json
+{
+  "clickhouse": {
+    "host": "your-clickhouse-host.com",
+    "port": 8443,
+    "username": "your_user",
+    "password": "your_password",
+    "database": "default",
+    "secure": true,
+    "verify": true
+  }
+}
+```
+
+Then in Claude Desktop configuration, you only need:
+
+```json
+{
+  "mcpServers": {
+    "mcp-clickhouse": {
+      "command": "python",
+      "args": ["-m", "mcp_clickhouse.main"]
+    }
+  }
+}
+```
+
+### Using Environment Variables
 
 1. Open the Claude Desktop configuration file located at:
    * On macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
@@ -440,6 +563,14 @@ uv run pytest -v tests
 uv run pytest -v tests/test_tool.py # ClickHouse only
 uv run pytest -v tests/test_chdb_tool.py # chDB only
 ```
+
+## What's Different from Original
+
+* **Scope-based table filtering**: Limit each MCP instance to specific tables
+* **JSON configuration support**: Store credentials and scopes in JSON files instead of environment variables
+* **Multi-instance support**: Run multiple servers with different scopes using `--scope` argument
+* **Response filtering**: Filters query results without SQL parsing using response fingerprinting
+* **Deny-by-default**: No access without explicit configuration
 
 ## YouTube Overview
 
